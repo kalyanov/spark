@@ -207,6 +207,17 @@ export class PackedSplats implements SplatSource {
     this.splatEncoding = options.splatEncoding ?? this.splatEncoding;
     this.lodSplats = options.lodSplats;
 
+    // Inherit encoding from lodSplats when this is a shell (no own data from
+    // decoder). RAD files with LOD trees return data via lodSplats — the
+    // file-embedded encoding lives there, not on the parent result.
+    if (
+      !options.splatEncoding &&
+      this.lodSplats instanceof PackedSplats &&
+      this.lodSplats.splatEncoding
+    ) {
+      this.splatEncoding = this.lodSplats.splatEncoding;
+    }
+
     if (options.packedArray) {
       this.packedArray = options.packedArray;
       this.numSplats = options.numSplats ?? this.packedArray.length / 4;

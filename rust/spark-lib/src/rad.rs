@@ -40,6 +40,8 @@ pub struct RadEncoder<T: SplatGetter> {
     pub sh_label_encoding: RadShLabelEncoding,
     pub sh_clusters: Option<ShClusters>,
     pub comment: Option<String>,
+    pub rgb_percentile_lo: f32,
+    pub rgb_percentile_hi: f32,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -263,6 +265,8 @@ impl<T: SplatGetter> RadEncoder<T> {
             sh_label_encoding: RadShLabelEncoding::default(),
             sh_clusters: None,
             comment: None,
+            rgb_percentile_lo: 1.0,
+            rgb_percentile_hi: 99.0,
         }
     }
 
@@ -364,30 +368,53 @@ impl<T: SplatGetter> RadEncoder<T> {
     }
 
     pub fn resolve_rgb_encoding(&mut self) {
-        if self.rgb_encoding != RadRgbEncoding::Auto {
+        // F32 is lossless and doesn't use splatEncoding for packing — nothing to compute
+        if self.rgb_encoding == RadRgbEncoding::F32 {
             return;
         }
 
         let mut all_rgb = vec![0.0; self.getter.num_splats() * 3];
         self.getter.get_rgb(0, self.getter.num_splats(), &mut all_rgb);
 
-        let n1 = ((all_rgb.len() as f32 * 0.01).round() as usize).min(all_rgb.len() - 1);
-        let n99 = ((all_rgb.len() as f32 * 0.99).round() as usize).min(all_rgb.len() - 1);
-        let rgb1 = *all_rgb.select_nth_unstable_by_key(n1, |&x| OrderedFloat(x)).1;
-        let rgb99 = *all_rgb.select_nth_unstable_by_key(n99, |&x| OrderedFloat(x)).1;
-        let rgb_min = rgb1.min(0.0);
-        let rgb_max = rgb99.max(1.0);
+        // Compute range from percentiles (default P1:P99)
+        let (rgb_min, rgb_max) =
+            if self.rgb_percentile_lo == 0.0 && self.rgb_percentile_hi == 100.0 {
+                // Full range — exact min/max, no data loss
+                let min = all_rgb.iter().cloned().reduce(f32::min).unwrap_or(0.0);
+                let max = all_rgb.iter().cloned().reduce(f32::max).unwrap_or(1.0);
+                (min.min(0.0), max.max(1.0))
+            } else {
+                let lo = ((all_rgb.len() as f32 * self.rgb_percentile_lo / 100.0)
+                    .round() as usize)
+                    .min(all_rgb.len() - 1);
+                let hi = ((all_rgb.len() as f32 * self.rgb_percentile_hi / 100.0)
+                    .round() as usize)
+                    .min(all_rgb.len() - 1);
+                debug_assert!(lo < hi, "rgb percentile lo ({lo}) must be less than hi ({hi})");
+                let rgb_lo =
+                    *all_rgb.select_nth_unstable_by_key(lo, |&x| OrderedFloat(x)).1;
+                let rgb_hi =
+                    *all_rgb.select_nth_unstable_by_key(hi, |&x| OrderedFloat(x)).1;
+                (rgb_lo.min(0.0), rgb_hi.max(1.0))
+            };
 
-        if rgb_min < -1.0 || rgb_max > 2.0 {
-            self.rgb_encoding = RadRgbEncoding::F16;
-        } else {
-            self.rgb_encoding = RadRgbEncoding::R8Delta;
-            if self.encoding.is_none() {
-                self.encoding = Some(SplatEncoding::default());
+        // Auto-select format if not forced (F16 forced skips this block)
+        if self.rgb_encoding == RadRgbEncoding::Auto {
+            if rgb_min < -1.0 || rgb_max > 2.0 {
+                self.rgb_encoding = RadRgbEncoding::F16;
+            } else {
+                self.rgb_encoding = RadRgbEncoding::R8Delta;
             }
-            self.encoding.as_mut().unwrap().rgb_min = rgb_min;
-            self.encoding.as_mut().unwrap().rgb_max = rgb_max;
         }
+
+        // Store range in splatEncoding metadata for ALL formats including forced F16.
+        // The WASM decoder uses splatEncoding to pack decoded floats into u8 PackedSplats
+        // on the GPU side — without it F16 data gets clamped to [0, 1] during packing.
+        if self.encoding.is_none() {
+            self.encoding = Some(SplatEncoding::default());
+        }
+        self.encoding.as_mut().unwrap().rgb_min = rgb_min;
+        self.encoding.as_mut().unwrap().rgb_max = rgb_max;
     }
 
     pub fn resolve_scales_encoding(&mut self) {
@@ -1554,11 +1581,24 @@ impl<T: SplatReceiver> RadDecoder<T> {
             // Reading a chunk in isolation, rebase so first splat is at index 0
             self.base = 0;
 
+            let lod_tree = chunk_meta.lod_tree.unwrap_or(false);
             self.splats.init_splats(&SplatInit {
                 num_splats: self.count,
                 max_sh_degree: chunk_meta.max_sh.unwrap_or(0),
-                lod_tree: chunk_meta.lod_tree.unwrap_or(false),
+                lod_tree,
             })?;
+
+            // Apply chunk-embedded encoding (mirrors parse_meta behavior)
+            if let Some(set_splat_encoding) = chunk_meta.splat_encoding.as_ref() {
+                self.splats.set_encoding(set_splat_encoding)?;
+            }
+
+            if lod_tree {
+                self.splats.set_encoding(&SetSplatEncoding {
+                    lod_opacity: Some(true),
+                    ..Default::default()
+                })?;
+            }
         }
 
         self.prop_index = 0;

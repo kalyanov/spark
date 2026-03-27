@@ -440,6 +440,9 @@ export declare class SparkRenderer extends THREE.Mesh {
         debugFlag: {
             value: boolean;
         };
+        rgbMinMaxLnScaleMinMax: {
+            value: THREE.Vector4;
+        };
     };
     dispose(): void;
     setDirty(): void;

@@ -37,6 +37,7 @@ uniform float focalAdjustment;
 uniform usampler2D ordering;
 uniform usampler2DArray extSplats;
 uniform usampler2DArray extSplats2;
+uniform vec4 rgbMinMaxLnScaleMinMax;
 
 // Required by logdepthbuf_pars_vertex (normally defined in three.js #include <common>)
 bool isPerspectiveMatrix( mat4 m ) {
@@ -85,13 +86,13 @@ void main() {
     } else {
         uvec4 packed = texelFetch(extSplats, texCoord, 0);
         if (!enableCovSplats) {
-            unpackSplatEncoding(packed, center, scales, quaternion, rgba, vec4(0.0, 1.0, LN_SCALE_MIN, LN_SCALE_MAX));
+            unpackSplatEncoding(packed, center, scales, quaternion, rgba, rgbMinMaxLnScaleMinMax);
             zeroScales = equal(scales, vec3(0.0));
             if (all(zeroScales)) {
                 return;
             }
         } else {
-            unpackSplatCovEncoding(packed, center, rgba, xxyyzz, xyxzyz, vec4(0.0, 1.0, LN_SCALE_MIN, LN_SCALE_MAX));
+            unpackSplatCovEncoding(packed, center, rgba, xxyyzz, xyxzyz, rgbMinMaxLnScaleMinMax);
             if (all(equal(xxyyzz, vec3(0.0))) && all(equal(xyxzyz, vec3(0.0)))) {
                 return;
             }
