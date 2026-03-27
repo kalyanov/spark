@@ -361,7 +361,7 @@ export class SplatAccumulator {
     computeUvec4x2Vec4Template,
   );
   static programTemplate = new DynoProgramTemplate(computeUvec4Vec4Template);
-  static generatorProgram = new Map<
+  static generatorProgram = new WeakMap<
     GsplatGenerator | CovSplatGenerator,
     DynoProgram
   >();

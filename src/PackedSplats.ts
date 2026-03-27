@@ -958,7 +958,7 @@ export class PackedSplats implements SplatSource {
   static programTemplate: DynoProgramTemplate | null = null;
 
   // Cache for GsplatGenerator programs
-  static generatorProgram = new Map<GsplatGenerator, DynoProgram>();
+  static generatorProgram = new WeakMap<GsplatGenerator, DynoProgram>();
 
   // Static full-screen quad for pseudo-compute shader rendering
   static fullScreenQuad = new FullScreenQuad(

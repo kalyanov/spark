@@ -44,6 +44,6 @@ export declare class Readback {
     }): Promise<B>;
     getTexture(): THREE.DataArrayTexture | undefined;
     static programTemplate: DynoProgramTemplate | null;
-    static readbackProgram: Map<Rgba8Readback, DynoProgram>;
+    static readbackProgram: WeakMap<Rgba8Readback, DynoProgram>;
     static fullScreenQuad: FullScreenQuad;
 }
