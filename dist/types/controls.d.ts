@@ -6,7 +6,7 @@ export declare class SparkControls {
     constructor({ canvas }: {
         canvas: HTMLCanvasElement;
     });
-    update(control: THREE.Object3D, camera?: THREE.Camera): boolean;
+    update(control: THREE.Object3D, camera?: THREE.Camera): void;
 }
 export declare class FpsMovement {
     moveSpeed: number;
@@ -52,7 +52,7 @@ export declare class FpsMovement {
         ctrlMultiplier?: number;
         xr?: THREE.WebXRManager;
     });
-    update(deltaTime: number, control: THREE.Object3D): boolean;
+    update(deltaTime: number, control: THREE.Object3D): void;
 }
 type PointerState = {
     initial: THREE.Vector2;
@@ -82,21 +82,16 @@ export declare class PointerControls {
     }) => void;
     doublePressLimitMs: number;
     doublePressDistance: number;
-    pressMoveDelayMs: number;
-    pressMoveAccelMs: number;
-    pressMoveSpeed: number;
     doublePressMoveSpeed: number;
-    triplePressMoveSpeed: number;
-    pressHeld?: boolean;
     doublePressed?: number;
     triplePressed: boolean;
     lastUp: {
         position: THREE.Vector2;
-        timeStamp: number;
+        time: number;
     } | null;
     lastLastUp: {
         position: THREE.Vector2;
-        timeStamp: number;
+        time: number;
     } | null;
     rotating: PointerState | null;
     sliding: PointerState | null;
@@ -105,7 +100,7 @@ export declare class PointerControls {
     scroll: THREE.Vector3;
     rotateVelocity: THREE.Vector3;
     moveVelocity: THREE.Vector3;
-    constructor({ canvas, rotateSpeed, slideSpeed, scrollSpeed, swapRotateSlide, reverseRotate, reverseSlide, reverseSwipe, reverseScroll, moveInertia, rotateInertia, pointerRollScale, doublePress, pressMoveDelayMs, pressMoveAccelMs, pressMoveSpeed, doublePressMoveSpeed, triplePressMoveSpeed, }: {
+    constructor({ canvas, rotateSpeed, slideSpeed, scrollSpeed, swapRotateSlide, reverseRotate, reverseSlide, reverseSwipe, reverseScroll, moveInertia, rotateInertia, pointerRollScale, doublePress, doublePressMoveSpeed, }: {
         canvas: HTMLCanvasElement;
         rotateSpeed?: number;
         slideSpeed?: number;
@@ -122,13 +117,9 @@ export declare class PointerControls {
             position: THREE.Vector2;
             intervalMs: number;
         }) => void;
-        pressMoveDelayMs?: number;
-        pressMoveAccelMs?: number;
-        pressMoveSpeed?: number;
         doublePressMoveSpeed?: number;
-        triplePressMoveSpeed?: number;
     });
     getPointerPosition(event: PointerEvent): THREE.Vector2;
-    update(deltaTime: number, control: THREE.Object3D, camera?: THREE.Camera): boolean;
+    update(deltaTime: number, control: THREE.Object3D, camera?: THREE.Camera): void;
 }
 export {};
