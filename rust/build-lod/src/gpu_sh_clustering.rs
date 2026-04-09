@@ -6,6 +6,20 @@ use wgpu::util::DeviceExt;
 use spark_lib::sh_clustering::FindNearestClusters;
 
 const WORKGROUP_SIZE: u32 = 64;
+const COPY_BUFFER_ALIGNMENT: usize = 4;
+
+/// Pad byte slice to wgpu COPY_BUFFER_ALIGNMENT (4 bytes).
+fn pad_to_copy_alignment(bytes: &[u8]) -> Cow<'_, [u8]> {
+    let remainder = bytes.len() % COPY_BUFFER_ALIGNMENT;
+    if remainder == 0 {
+        Cow::Borrowed(bytes)
+    } else {
+        let mut padded = bytes.to_vec();
+        padded.resize(bytes.len() + COPY_BUFFER_ALIGNMENT - remainder, 0);
+        Cow::Owned(padded)
+    }
+}
+
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Default)]
@@ -209,14 +223,14 @@ impl FindNearestClusters for GpuFindNearestClusters {
 
         if self.f16 {
             let clusters_f16: Vec<u16> = clusters.iter().copied().map(|x| half::f16::from_f32(x).to_bits()).collect();
-            self.queue.write_buffer(&buffers.clusters_buf, 0, bytemuck::cast_slice(&clusters_f16));
+            self.queue.write_buffer(&buffers.clusters_buf, 0, &pad_to_copy_alignment(bytemuck::cast_slice(&clusters_f16)));
         } else {
             self.queue.write_buffer(&buffers.clusters_buf, 0, bytemuck::cast_slice(clusters));
         }
 
         Ok(())
     }
-    
+
     fn find_nearest_clusters(&mut self, dims: usize, splats: &[f32]) -> anyhow::Result<Vec<(u32, f32)>> {
         let buffers = self.buffers.as_mut().unwrap();
 
@@ -225,7 +239,7 @@ impl FindNearestClusters for GpuFindNearestClusters {
 
         if self.f16 {
             let splats_f16: Vec<u16> = splats.iter().copied().map(|x| half::f16::from_f32(x).to_bits()).collect();
-            self.queue.write_buffer(&buffers.points_buf, 0, bytemuck::cast_slice(&splats_f16));
+            self.queue.write_buffer(&buffers.points_buf, 0, &pad_to_copy_alignment(bytemuck::cast_slice(&splats_f16)));
         } else {
             self.queue.write_buffer(&buffers.points_buf, 0, bytemuck::cast_slice(splats));
         }
