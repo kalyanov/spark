@@ -283,19 +283,51 @@ export class PackedSplats implements SplatSource {
   dispose() {
     if (this.target) {
       this.target.dispose();
+      // Null CPU-side data on render target texture — Three.js dispose() only
+      // frees GPU resources, the typed array in source.data stays in memory
+      // if anything still references the texture object (e.g. via dyno closures).
+      if (this.target.texture?.source) {
+        this.target.texture.source.data = null;
+      }
       this.target = null;
     }
     if (this.source) {
       this.source.dispose();
+      if (this.source.source) {
+        this.source.source.data = null;
+      }
       this.source = null;
     }
+    this.packedArray = null;
+    // Break cyclic reference: DynoPackedSplats.packedSplats → this.
+    // DynoUniform update closures capture `this` via DynoPackedSplats,
+    // keeping PackedSplats alive if any DynoProgram/ShaderMaterial
+    // still references the uniform (e.g. Three.js render state cache).
+    if (this.dyno && 'packedSplats' in this.dyno) {
+      this.dyno.packedSplats = undefined;
+    }
+    (this.dyno as DynoUniform<typeof TPackedSplats, "packedSplats"> | null) =
+      null;
     this.disposeLodSplats();
-    (this.extra.sh1Texture as { value?: THREE.DataArrayTexture } | undefined)
-      ?.value?.dispose();
-    (this.extra.sh2Texture as { value?: THREE.DataArrayTexture } | undefined)
-      ?.value?.dispose();
-    (this.extra.sh3Texture as { value?: THREE.DataArrayTexture } | undefined)
-      ?.value?.dispose();
+    // Dispose ALL DynoUniform textures in extra (not just SH) and null their
+    // CPU-side data. SH textures are the most common, but extra can contain
+    // arbitrary DynoUniforms with texture values.
+    for (const key in this.extra) {
+      const entry = this.extra[key];
+      if (
+        entry &&
+        typeof entry === 'object' &&
+        'value' in entry &&
+        (entry as { value?: { isTexture?: boolean } }).value?.isTexture
+      ) {
+        const texture = (entry as { value: THREE.Texture }).value;
+        texture.dispose();
+        if ('source' in texture && texture.source) {
+          texture.source.data = null;
+        }
+      }
+    }
+    this.extra = {};
   }
 
   prepareFetchSplat() {
