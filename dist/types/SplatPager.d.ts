@@ -96,6 +96,7 @@ export declare class SplatPager {
     curSh: number;
     autoDrive: boolean;
     numFetchers: number;
+    fetchPause: number;
     splatsChunkToPage: Map<PagedSplats, ({
         page: number;
         lru: number;
@@ -103,6 +104,7 @@ export declare class SplatPager {
     pageToSplatsChunk: ({
         splats: PagedSplats;
         chunk: number;
+        time: number;
     } | undefined)[];
     pageFreelist: number[];
     pageLru: Set<{
