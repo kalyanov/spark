@@ -313,6 +313,15 @@ export class SplatSkinning {
     this.mesh.needsUpdate = true;
   }
 
+  dispose() {
+    this.skinTexture.dispose();
+    this.boneTexture.dispose();
+    this.skinData = new Uint16Array(0);
+    this.boneData = new Float32Array(0);
+    this.boneRestQuatPosScale = [];
+    this.boneRestInvMats = [];
+  }
+
   private static UNIT_SCALE = new THREE.Vector3(1, 1, 1);
   private static relQuat = new THREE.Quaternion();
   private static relPos = new THREE.Vector3();

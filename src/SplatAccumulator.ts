@@ -365,6 +365,20 @@ export class SplatAccumulator {
     GsplatGenerator | CovSplatGenerator,
     DynoProgram
   >();
+
+  static releaseGeneratorProgram(
+    generator?: GsplatGenerator | CovSplatGenerator,
+  ) {
+    if (!generator) {
+      return;
+    }
+    const program = SplatAccumulator.generatorProgram.get(generator);
+    if (program) {
+      program.dispose();
+      SplatAccumulator.generatorProgram.delete(generator);
+    }
+  }
+
   static fullScreenQuad = new FullScreenQuad(
     new THREE.RawShaderMaterial({ visible: false }),
   );

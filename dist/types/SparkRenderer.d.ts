@@ -238,6 +238,7 @@ export declare class SparkRenderer extends THREE.Mesh {
     autoUpdate: boolean;
     preUpdate: boolean;
     static sparkOverride?: SparkRenderer;
+    private static activeRenderers;
     renderSize: THREE.Vector2;
     maxStdDev: number;
     minPixelRadius: number;
@@ -445,6 +446,10 @@ export declare class SparkRenderer extends THREE.Mesh {
         };
     };
     dispose(): void;
+    static unregisterMesh(mesh: SplatMesh): void;
+    private unregisterMesh;
+    private cleanupStaleLodInstances;
+    private static getMeshLodSplats;
     setDirty(): void;
     onBeforeRender(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera): void;
     clearSplats(): void;

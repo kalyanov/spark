@@ -218,6 +218,14 @@ export class ExtSplats implements SplatSource {
       this.textures[1] = ExtSplats.emptyTexture;
     }
     this.disposeLodSplats();
+    (this.extra.sh1Texture as { value?: THREE.DataArrayTexture } | undefined)
+      ?.value?.dispose();
+    (this.extra.sh2Texture as { value?: THREE.DataArrayTexture } | undefined)
+      ?.value?.dispose();
+    (this.extra.sh3TextureA as { value?: THREE.DataArrayTexture } | undefined)
+      ?.value?.dispose();
+    (this.extra.sh3TextureB as { value?: THREE.DataArrayTexture } | undefined)
+      ?.value?.dispose();
   }
 
   prepareFetchSplat() {

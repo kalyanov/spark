@@ -553,6 +553,16 @@ export class SplatEdits {
       this.dynoEdits,
     );
   }
+
+  dispose() {
+    this.sdfTexture.dispose();
+    this.numSdfs = 0;
+    this.numEdits = 0;
+    this.sdfData = new Uint32Array(0);
+    this.sdfFloatData = new Float32Array(this.sdfData.buffer);
+    this.editData = new Uint32Array(0);
+    this.editFloatData = new Float32Array(this.editData.buffer);
+  }
 }
 
 // Dyno types and components:

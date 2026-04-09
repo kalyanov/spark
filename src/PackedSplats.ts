@@ -290,6 +290,12 @@ export class PackedSplats implements SplatSource {
       this.source = null;
     }
     this.disposeLodSplats();
+    (this.extra.sh1Texture as { value?: THREE.DataArrayTexture } | undefined)
+      ?.value?.dispose();
+    (this.extra.sh2Texture as { value?: THREE.DataArrayTexture } | undefined)
+      ?.value?.dispose();
+    (this.extra.sh3Texture as { value?: THREE.DataArrayTexture } | undefined)
+      ?.value?.dispose();
   }
 
   prepareFetchSplat() {
@@ -959,6 +965,17 @@ export class PackedSplats implements SplatSource {
 
   // Cache for GsplatGenerator programs
   static generatorProgram = new WeakMap<GsplatGenerator, DynoProgram>();
+
+  static releaseGeneratorProgram(generator?: GsplatGenerator) {
+    if (!generator) {
+      return;
+    }
+    const program = PackedSplats.generatorProgram.get(generator);
+    if (program) {
+      program.dispose();
+      PackedSplats.generatorProgram.delete(generator);
+    }
+  }
 
   // Static full-screen quad for pseudo-compute shader rendering
   static fullScreenQuad = new FullScreenQuad(

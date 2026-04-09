@@ -104,6 +104,7 @@ export declare class PackedSplats implements SplatSource {
     extractSplats(indices: Uint32Array, pageColoring: boolean): PackedSplats;
     static programTemplate: DynoProgramTemplate | null;
     static generatorProgram: WeakMap<GsplatGenerator, DynoProgram>;
+    static releaseGeneratorProgram(generator?: GsplatGenerator): void;
     static fullScreenQuad: FullScreenQuad;
     static emptyUint32x4: THREE.DataArrayTexture;
     static emptyUint32x2: THREE.DataArrayTexture;
