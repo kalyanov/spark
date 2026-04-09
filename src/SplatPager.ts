@@ -478,6 +478,7 @@ export interface SplatPagerOptions {
 
 export class SplatPager {
   renderer: THREE.WebGLRenderer;
+  disposed = false;
 
   extSplats: boolean;
   maxPages: number;
@@ -835,8 +836,22 @@ export class SplatPager {
   }
 
   dispose() {
+    this.disposed = true;
     this.autoDrive = false;
     this.numFetchers = 0;
+
+    // Clear tracking state — drop all references to PagedSplats and chunk data
+    this.splatsChunkToPage.clear();
+    this.pageToSplatsChunk.fill(undefined);
+    this.pageFreelist = [];
+    this.pageLru.clear();
+    this.freeablePages = [];
+    this.newUploads = [];
+    this.readyUploads = [];
+    this.lodTreeUpdates = [];
+    this.fetchers = [];
+    this.fetched = [];
+    this.fetchPriority = [];
 
     this.packedTexture.value.dispose();
     if (this.extTexture.value !== SplatPager.emptyExtTexture) {
@@ -1271,6 +1286,7 @@ export class SplatPager {
           .fetchDecodeChunk(chunk)
           .then(
             async (data) => {
+              if (this.disposed) return;
               // Place data in ready queue and remove self from active fetchers list
               this.fetched.push({ splats, chunk, data });
               if (this.fetchPause > 0) {
@@ -1286,6 +1302,7 @@ export class SplatPager {
             },
           )
           .finally(() => {
+            if (this.disposed) return;
             this.fetchers = this.fetchers.filter(
               ({ splats: s, chunk: c }) => splats !== s || chunk !== c,
             );
