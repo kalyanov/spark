@@ -58,7 +58,7 @@ export declare class SplatAccumulator {
     };
     static programExtTemplate: DynoProgramTemplate;
     static programTemplate: DynoProgramTemplate;
-    static generatorProgram: Map<GsplatGenerator | CovSplatGenerator, DynoProgram>;
+    static generatorProgram: WeakMap<GsplatGenerator | CovSplatGenerator, DynoProgram>;
     static fullScreenQuad: FullScreenQuad;
     generate({ generator, covGenerator, base, count, renderer, }: {
         generator?: GsplatGenerator;

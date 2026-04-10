@@ -3,7 +3,7 @@ use std::io::{BufReader, BufWriter, Read, Write};
 
 use spark_lib::{chunk_tree, sh_clustering};
 use spark_lib::decoder::{SplatEncoding, SplatGetter, SplatReceiver};
-use spark_lib::rad::RadEncoder;
+use spark_lib::rad::{RadEncoder, RadRgbEncoding};
 use spark_lib::{
     decoder::{ChunkReceiver, MultiDecoder},
     gsplat::GsplatArray,
@@ -67,6 +67,8 @@ struct BuildLodOptions {
     cluster_sh: Option<usize>,
     cluster_sh_cpu: bool,
     cluster_sh_f16: Option<bool>,
+    rgb_percentiles: Option<(f32, f32)>,
+    rgb_format: Option<RadRgbEncoding>,
 }
 
 fn read_file_chunks(filename: &str, decoder: &mut impl ChunkReceiver) -> anyhow::Result<()> {
@@ -319,6 +321,17 @@ fn process_file_lod_tsplat<TS: SplatReceiver + TsplatArray + SplatGetter>(filena
                 encoder = encoder.with_sh_clusters(sh_clusters);
             }
 
+            // Apply --rgb-range
+            if let Some((lo, hi)) = options.rgb_percentiles {
+                encoder.rgb_percentile_lo = lo;
+                encoder.rgb_percentile_hi = hi;
+            }
+
+            // Apply --rgb-format
+            if let Some(format) = options.rgb_format {
+                encoder.rgb_encoding = format;
+            }
+
             let input_encoding = serde_json::json!({
                 "center": encoder.center_encoding,
                 "alpha": encoder.alpha_encoding,
@@ -410,6 +423,8 @@ fn show_usage_exit() {
     eprintln!("  [--min-box=<x>,<y>,<z>]                         // Crop input file to minimum bounding coord");
     eprintln!("  [--max-box=<x>,<y>,<z>]                         // Crop input file to maximum bounding coord");
     eprintln!("  [--within-dist=<x>,<y>,<z>,<radius>]            // Crop input file to within radius of a point");
+    eprintln!("  [--rgb-range=<full|P1:P99|P0.1:P99.5>]          // RGB value range: full (actual min/max) or P<lo>:P<hi> percentiles (default P1:P99)");
+    eprintln!("  [--rgb-format=<auto|r8delta|f16>]               // RGB storage format: auto (default), r8delta (forced), f16 (forced)");
     eprintln!("  [--skip-validate]                               // Skip validation of input file");
     eprintln!("  [--inflate]                                     // Inflate scales to output normal splat opacity 0..1");
     eprintln!("  [--cluster-sh[=<iterations>]]                   // Cluster SH coefficients into <=64K codebook (default 10 iterations)");
@@ -550,6 +565,61 @@ fn main() {
             }
             options.within_dist = Some(([values[0], values[1], values[2]], values[3]));
             println!("Using --within-dist={:?}", options.within_dist);
+            continue;
+        }
+        if let Some(value) = arg.strip_prefix("--rgb-range=") {
+            match value {
+                "full" => {
+                    options.rgb_percentiles = Some((0.0, 100.0));
+                    println!("Using --rgb-range=full (actual min/max)");
+                }
+                s if s.starts_with('P') && s.contains(':') => {
+                    let parts: Vec<&str> = s.split(':').collect();
+                    if parts.len() == 2
+                        && parts[0].starts_with('P')
+                        && parts[1].starts_with('P')
+                    {
+                        match (parts[0][1..].parse::<f32>(), parts[1][1..].parse::<f32>()) {
+                            (Ok(lo), Ok(hi)) if (0.0..=100.0).contains(&lo) && (0.0..=100.0).contains(&hi) && lo < hi => {
+                                options.rgb_percentiles = Some((lo, hi));
+                                println!("Using --rgb-range=P{lo}:P{hi}");
+                            }
+                            _ => {
+                                eprintln!("Invalid --rgb-range percentiles: {value} (expected P<0-100>:P<0-100>)");
+                                show_usage_exit();
+                            }
+                        }
+                    } else {
+                        eprintln!("Invalid --rgb-range format: {value} (expected full or P<lo>:P<hi>)");
+                        show_usage_exit();
+                    }
+                }
+                _ => {
+                    eprintln!("Invalid --rgb-range: {value} (expected full or P<lo>:P<hi>)");
+                    show_usage_exit();
+                }
+            }
+            continue;
+        }
+        if let Some(value) = arg.strip_prefix("--rgb-format=") {
+            match value {
+                "auto" => {
+                    // Explicit auto — same as default, no-op
+                    println!("Using --rgb-format=auto");
+                }
+                "r8delta" => {
+                    options.rgb_format = Some(RadRgbEncoding::R8Delta);
+                    println!("Using --rgb-format=r8delta");
+                }
+                "f16" => {
+                    options.rgb_format = Some(RadRgbEncoding::F16);
+                    println!("Using --rgb-format=f16");
+                }
+                _ => {
+                    eprintln!("Invalid --rgb-format: {value} (expected auto|r8delta|f16)");
+                    show_usage_exit();
+                }
+            }
             continue;
         }
         if arg == "--skip-validate" {
