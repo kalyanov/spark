@@ -41,6 +41,7 @@ export declare class SplatSkinning {
     setBoneMatrix(boneIndex: number, matrix: THREE.Matrix4): void;
     setSplatBones(splatIndex: number, boneIndices: THREE.Vector4, weights: THREE.Vector4): void;
     updateBones(): void;
+    dispose(): void;
     private static UNIT_SCALE;
     private static relQuat;
     private static relPos;

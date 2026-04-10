@@ -20,7 +20,6 @@ import {
   DynoInt,
   DynoProgram,
   DynoProgramTemplate,
-  type DynoType,
   DynoUniform,
   DynoUsampler2DArray,
   type DynoVal,
@@ -284,34 +283,51 @@ export class PackedSplats implements SplatSource {
   dispose() {
     if (this.target) {
       this.target.dispose();
-      this.target.texture.source.data = null;
+      // Null CPU-side data on render target texture — Three.js dispose() only
+      // frees GPU resources, the typed array in source.data stays in memory
+      // if anything still references the texture object (e.g. via dyno closures).
+      if (this.target.texture?.source) {
+        this.target.texture.source.data = null;
+      }
       this.target = null;
     }
     if (this.source) {
       this.source.dispose();
-      this.source.source.data = null;
+      if (this.source.source) {
+        this.source.source.data = null;
+      }
       this.source = null;
     }
-
     this.packedArray = null;
-
+    // Break cyclic reference: DynoPackedSplats.packedSplats → this.
+    // DynoUniform update closures capture `this` via DynoPackedSplats,
+    // keeping PackedSplats alive if any DynoProgram/ShaderMaterial
+    // still references the uniform (e.g. Three.js render state cache).
+    if (this.dyno && 'packedSplats' in this.dyno) {
+      this.dyno.packedSplats = undefined;
+    }
+    (this.dyno as DynoUniform<typeof TPackedSplats, "packedSplats"> | null) =
+      null;
+    this.disposeLodSplats();
+    // Dispose ALL DynoUniform textures in extra (not just SH) and null their
+    // CPU-side data. SH textures are the most common, but extra can contain
+    // arbitrary DynoUniforms with texture values.
     for (const key in this.extra) {
-      const dyno = this.extra[key] as DynoUniform<
-        DynoType,
-        string,
-        THREE.Texture
-      >;
-      if (dyno instanceof DynoUniform) {
-        const texture = dyno.value;
-        if (texture?.isTexture) {
-          texture.dispose();
+      const entry = this.extra[key];
+      if (
+        entry &&
+        typeof entry === 'object' &&
+        'value' in entry &&
+        (entry as { value?: { isTexture?: boolean } }).value?.isTexture
+      ) {
+        const texture = (entry as { value: THREE.Texture }).value;
+        texture.dispose();
+        if ('source' in texture && texture.source) {
           texture.source.data = null;
         }
       }
     }
     this.extra = {};
-
-    this.disposeLodSplats();
   }
 
   prepareFetchSplat() {
@@ -983,6 +999,17 @@ export class PackedSplats implements SplatSource {
 
   // Cache for GsplatGenerator programs
   static generatorProgram = new WeakMap<GsplatGenerator, DynoProgram>();
+
+  static releaseGeneratorProgram(generator?: GsplatGenerator) {
+    if (!generator) {
+      return;
+    }
+    const program = PackedSplats.generatorProgram.get(generator);
+    if (program) {
+      program.dispose();
+      PackedSplats.generatorProgram.delete(generator);
+    }
+  }
 
   // Static full-screen quad for pseudo-compute shader rendering
   static fullScreenQuad = new FullScreenQuad(

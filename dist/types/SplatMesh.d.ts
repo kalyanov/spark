@@ -93,6 +93,7 @@ export declare class EmptySplatSource implements SplatSource {
     }): DynoVal<typeof Gsplat>;
 }
 export declare class SplatMesh extends SplatGenerator {
+    private static emptySource;
     initialized: Promise<SplatMesh>;
     isInitialized: boolean;
     packedSplats?: PackedSplats;
@@ -145,6 +146,7 @@ export declare class SplatMesh extends SplatGenerator {
     static staticInitialize(): Promise<void>;
     pushSplat(center: THREE.Vector3, scales: THREE.Vector3, quaternion: THREE.Quaternion, opacity: number, color: THREE.Color): void;
     forEachSplat(callback: (index: number, center: THREE.Vector3, scales: THREE.Vector3, quaternion: THREE.Quaternion, opacity: number, color: THREE.Color) => void): void;
+    private releaseGeneratorCaches;
     dispose(): void;
     getBoundingBox(centers_only?: boolean): THREE.Box3;
     set objectModifier(modifier: GsplatModifier | undefined);

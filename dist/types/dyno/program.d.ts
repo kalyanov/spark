@@ -17,6 +17,7 @@ export declare class DynoProgram {
     });
     prepareMaterial(): THREE.RawShaderMaterial;
     update(): void;
+    dispose(): void;
 }
 export declare class DynoProgramTemplate {
     before: string;

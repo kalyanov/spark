@@ -88,6 +88,7 @@ export interface SplatPagerOptions {
 }
 export declare class SplatPager {
     renderer: THREE.WebGLRenderer;
+    disposed: boolean;
     extSplats: boolean;
     maxPages: number;
     maxSplats: number;

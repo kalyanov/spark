@@ -87,6 +87,7 @@ export declare class SplatEdits {
     };
     modify(gsplat: DynoVal<typeof Gsplat>): DynoVal<typeof Gsplat>;
     modifyCov(covsplat: DynoVal<typeof CovSplat>): DynoVal<typeof CovSplat>;
+    dispose(): void;
 }
 export declare const SdfArray: {
     type: "SdfArray";
