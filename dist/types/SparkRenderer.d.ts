@@ -444,6 +444,12 @@ export declare class SparkRenderer extends THREE.Mesh {
             value: THREE.Vector4;
         };
     };
+    /**
+     * Release GPU/CPU buffers held by accumulators and sort state.
+     * Call between scene transitions to free memory without destroying the
+     * renderer. Buffers are lazily reallocated on the next update() with splats.
+     */
+    releaseBuffers(): void;
     dispose(): void;
     setDirty(): void;
     onBeforeRender(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera): void;

@@ -151,6 +151,11 @@ export class SplatAccumulator {
   // Ensures our NewSplatAccumulator.target render target has enough space
   // to generate maxSplats total Gsplats, and reallocate if not large enough.
   ensureGenerate({ maxSplats }: { maxSplats: number }) {
+    if (maxSplats === 0) {
+      // No splats — release target if allocated, don't create a new one.
+      if (this.target) this.dispose();
+      return false;
+    }
     if (this.target && (maxSplats ?? 1) <= this.maxSplats) {
       return false;
     }

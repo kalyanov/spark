@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 import {
   ExtSplats,
   PackedSplats,
@@ -665,6 +666,47 @@ export class SparkRenderer extends THREE.Mesh {
     return uniforms;
   }
 
+  /**
+   * Release GPU/CPU buffers held by accumulators and sort state.
+   * Call between scene transitions to free memory without destroying the
+   * renderer. Buffers are lazily reallocated on the next update() with splats.
+   */
+  releaseBuffers() {
+    const allAccumulators = new Set<SplatAccumulator>();
+    allAccumulators.add(this.display);
+    allAccumulators.add(this.current);
+    for (const acc of this.accumulators) {
+      allAccumulators.add(acc);
+    }
+    for (const acc of allAccumulators) {
+      acc.dispose();
+      // Clear mappings to release generator closure references that
+      // hold the full chain: generator → dyno closure → DynoUniform →
+      // texture → image.data → packedArray. Without this, switching to
+      // an empty scene keeps the previous scene's splat data alive.
+      acc.mapping = [];
+    }
+
+    this.maxSplats = 0;
+    this.readback32 = new Uint32Array(0);
+
+    if (this.orderingTexture) {
+      this.orderingTexture.dispose();
+      this.orderingTexture = null;
+    }
+
+    // Recreate static FullScreenQuads — Three.js caches render items in
+    // a WeakMap keyed by the FullScreenQuad's internal _mesh. The cached
+    // render items hold the last-used compute material whose uniforms
+    // reference scene textures (packed splats, SH data, ~160 MB+).
+    // Simply reassigning .material doesn't clear the cache — only
+    // creating a new mesh (new WeakMap key) lets the old entry be GC'd.
+    const dummyMaterial = new THREE.RawShaderMaterial({ visible: false });
+    PackedSplats.fullScreenQuad = new FullScreenQuad(dummyMaterial);
+    SplatAccumulator.fullScreenQuad = new FullScreenQuad(dummyMaterial);
+    Readback.fullScreenQuad = new FullScreenQuad(dummyMaterial);
+  }
+
   dispose() {
     if (this.target) {
       this.target.dispose();
@@ -972,6 +1014,12 @@ export class SparkRenderer extends THREE.Mesh {
 
   private async driveSort() {
     if (this.sorting || !this.sortDirty) {
+      return;
+    }
+
+    // Nothing to sort when accumulators have no target (after releaseBuffers).
+    if (!this.current.target) {
+      this.sortDirty = false;
       return;
     }
 
