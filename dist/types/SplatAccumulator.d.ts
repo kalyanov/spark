@@ -2,7 +2,7 @@ import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { Readback } from './Readback';
 import { CovSplatGenerator, GsplatGenerator, SplatGenerator } from './SplatGenerator';
 import { SplatMesh } from './SplatMesh';
-import { DynoBool, DynoProgram, DynoProgramTemplate, DynoUsampler2DArray, DynoVec3 } from './dyno';
+import { DynoBool, DynoProgram, DynoProgramTemplate, DynoUsampler2DArray, DynoVec3, DynoVec4 } from './dyno';
 import * as THREE from "three";
 export type GeneratorMapping = {
     node: SplatGenerator;
@@ -22,6 +22,8 @@ export declare class SplatAccumulator {
     static viewCenterUniform: DynoVec3<THREE.Vector3, "value">;
     static viewDirUniform: DynoVec3<THREE.Vector3, "value">;
     static sortRadialUniform: DynoBool<string>;
+    static accumEncodingUniform: DynoVec4<THREE.Vector4, "value">;
+    private static encodingMismatchWarned;
     maxSplats: number;
     numSplats: number;
     target: THREE.WebGLArrayRenderTarget | null;

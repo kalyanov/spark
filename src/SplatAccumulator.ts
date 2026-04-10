@@ -13,6 +13,7 @@ import {
   LN_SCALE_MIN,
   SPLAT_TEX_HEIGHT,
   SPLAT_TEX_WIDTH,
+  type SplatEncoding,
 } from "./defines";
 import {
   type CovSplat,
@@ -23,6 +24,7 @@ import {
   DynoUsampler2DArray,
   type DynoVal,
   DynoVec3,
+  DynoVec4,
   combineCovSplat,
   combineGsplat,
   dynoBlock,
@@ -64,6 +66,11 @@ export class SplatAccumulator {
   static viewCenterUniform = new DynoVec3({ value: new THREE.Vector3() });
   static viewDirUniform = new DynoVec3({ value: new THREE.Vector3() });
   static sortRadialUniform = new DynoBool({ value: true });
+  static accumEncodingUniform = new DynoVec4({
+    value: new THREE.Vector4(0, 1, LN_SCALE_MIN, LN_SCALE_MAX),
+  });
+  // Fires once per app lifetime — not reset when meshes change.
+  private static encodingMismatchWarned = false;
   maxSplats = 0;
   numSplats = 0;
   target: THREE.WebGLArrayRenderTarget | null = null;
@@ -267,7 +274,7 @@ export class SplatAccumulator {
                 });
                 const output = outputPackedSplat(
                   gsplat,
-                  dynoConst("vec4", [0, 1, LN_SCALE_MIN, LN_SCALE_MAX]),
+                  SplatAccumulator.accumEncodingUniform,
                 );
                 roots.push(output);
               } else {
@@ -297,7 +304,7 @@ export class SplatAccumulator {
               });
               const output = outputCovSplat(
                 covsplat,
-                dynoConst("vec4", [0, 1, LN_SCALE_MIN, LN_SCALE_MAX]),
+                SplatAccumulator.accumEncodingUniform,
               );
               roots.push(output);
             }
@@ -568,6 +575,44 @@ export class SplatAccumulator {
       visibleGenerators,
       generate: () => {
         this.ensureGenerate({ maxSplats });
+
+        // Set accumulator encoding from the first SplatMesh with encoding.
+        // Check both packedSplats (model path) and paged (streaming path).
+        // All meshes in one accumulator share a single encoding uniform —
+        // per-mesh encoding would require re-pack normalization.
+        if (!this.extSplats) {
+          let firstEnc: SplatEncoding | undefined;
+          for (const { node } of this.mapping) {
+            if (node instanceof SplatMesh) {
+              const enc =
+                node.packedSplats?.splatEncoding ?? node.paged?.splatEncoding;
+              if (enc) {
+                if (!firstEnc) {
+                  firstEnc = enc;
+                  SplatAccumulator.accumEncodingUniform.value.set(
+                    enc.rgbMin ?? 0,
+                    enc.rgbMax ?? 1,
+                    enc.lnScaleMin ?? LN_SCALE_MIN,
+                    enc.lnScaleMax ?? LN_SCALE_MAX,
+                  );
+                } else if (
+                  !SplatAccumulator.encodingMismatchWarned &&
+                  (enc.rgbMin !== firstEnc.rgbMin ||
+                    enc.rgbMax !== firstEnc.rgbMax ||
+                    enc.lnScaleMin !== firstEnc.lnScaleMin ||
+                    enc.lnScaleMax !== firstEnc.lnScaleMax)
+                ) {
+                  SplatAccumulator.encodingMismatchWarned = true;
+                  console.warn(
+                    "SplatAccumulator: multiple meshes with different splatEncoding — " +
+                      "only the first encoding is used for re-packing",
+                  );
+                  break;
+                }
+              }
+            }
+          }
+        }
 
         for (const { node, base, count } of this.mapping) {
           const { generator, covGenerator } = node;

@@ -331,9 +331,14 @@ export class SplatMesh extends SplatGenerator {
       this.splats = this.extSplats;
     } else if (options.packedSplats) {
       this.packedSplats = options.packedSplats;
-      this.packedSplats.splatEncoding = options.splatEncoding ?? {
-        ...DEFAULT_SPLAT_ENCODING,
-      };
+      // Prefer encoding already on packedSplats (set by WASM decoder from file
+      // metadata for RAD, or from user encoding for SOG), then user-provided,
+      // then default. This prevents overwriting authoritative file-embedded
+      // encoding with a user value that doesn't match the packed data.
+      this.packedSplats.splatEncoding =
+        this.packedSplats.splatEncoding ??
+        options.splatEncoding ??
+        { ...DEFAULT_SPLAT_ENCODING };
       this.splats = this.packedSplats;
     } else {
       this.packedSplats = new PackedSplats();

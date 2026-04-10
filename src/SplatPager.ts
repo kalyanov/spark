@@ -45,6 +45,7 @@ export class PagedSplats implements SplatSource {
   numSplats: number;
   splatEncoding?: SplatEncoding;
   radMetaPromise?: Promise<{ meta: RadMeta; chunksStart: number }>;
+  private radEncoding?: SplatEncoding;
 
   dynoNumSplats: dyno.DynoInt<"numSplats">;
   dynoIndices: dyno.DynoUsampler2D<"indices", THREE.DataTexture>;
@@ -231,6 +232,14 @@ export class PagedSplats implements SplatSource {
       throw new Error("No url or fileBytes provided");
     }
 
+    // Get encoding from RAD metadata (parsed from file header before chunks).
+    // Cache on instance to avoid re-awaiting the promise on every chunk.
+    if (!this.radEncoding && this.radMetaPromise) {
+      const { meta } = await this.radMetaPromise;
+      this.radEncoding = meta.splatEncoding;
+    }
+    const radEncoding = this.radEncoding;
+
     return await workerPool.withWorker(async (worker) => {
       if (!this.pager) {
         throw new Error("PagedSplats.pager not set");
@@ -242,10 +251,13 @@ export class PagedSplats implements SplatSource {
           sh1Codes: this.sh1Codes?.slice(),
           sh2Codes: this.sh2Codes?.slice(),
           sh3Codes: this.sh3Codes?.slice(),
+          encoding: radEncoding,
         })) as { lodSplats: PackedResult };
         const lodSplats = result.lodSplats;
         if (!this.splatEncoding) {
-          this.splatEncoding = lodSplats.splatEncoding;
+          // Prefer encoding from RAD header (authoritative, matches packed
+          // data). Fall back to chunk decode result for non-RAD formats.
+          this.splatEncoding = radEncoding ?? lodSplats.splatEncoding;
 
           this.numSh = lodSplats.extra.sh3
             ? 3

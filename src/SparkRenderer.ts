@@ -11,7 +11,12 @@ import {
 import { SplatAccumulator } from "./SplatAccumulator";
 import { SplatGeometry } from "./SplatGeometry";
 import { SplatWorker } from "./SplatWorker";
-import { SPLAT_TEX_HEIGHT, SPLAT_TEX_WIDTH } from "./defines";
+import {
+  LN_SCALE_MAX,
+  LN_SCALE_MIN,
+  SPLAT_TEX_HEIGHT,
+  SPLAT_TEX_WIDTH,
+} from "./defines";
 import { getShaders } from "./shaders";
 import {
   cloneClock,
@@ -652,6 +657,10 @@ export class SparkRenderer extends THREE.Mesh {
       deltaTime: { value: 0 },
       // Debug flag that alternates each frame
       debugFlag: { value: false },
+      // Splat encoding range for packed splat unpacking
+      rgbMinMaxLnScaleMinMax: {
+        value: new THREE.Vector4(0, 1, LN_SCALE_MIN, LN_SCALE_MAX),
+      },
     };
     return uniforms;
   }
@@ -789,6 +798,12 @@ export class SparkRenderer extends THREE.Mesh {
       this.uniforms.extSplats.value = packedSplats[0];
       this.uniforms.extSplats2.value = packedSplats[0];
     }
+
+    // Read accumulator encoding so the render shader unpacks with the same
+    // range that the accumulator used during re-packing (both model and paged paths).
+    this.uniforms.rgbMinMaxLnScaleMinMax.value.copy(
+      SplatAccumulator.accumEncodingUniform.value,
+    );
 
     this.uniforms.time.value = spark.display.time;
     this.uniforms.deltaTime.value = spark.display.deltaTime;
