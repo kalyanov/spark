@@ -27,6 +27,7 @@ export declare class FpsMovement {
     ctrlMultiplier: number;
     xr?: THREE.WebXRManager;
     enable: boolean;
+    extraMove: THREE.Vector3;
     keydown: {
         [key: string]: boolean;
     };
@@ -87,6 +88,7 @@ export declare class PointerControls {
     pressMoveSpeed: number;
     doublePressMoveSpeed: number;
     triplePressMoveSpeed: number;
+    pressMoveCenter: boolean;
     pressHeld?: boolean;
     doublePressed?: number;
     triplePressed: boolean;
@@ -105,7 +107,7 @@ export declare class PointerControls {
     scroll: THREE.Vector3;
     rotateVelocity: THREE.Vector3;
     moveVelocity: THREE.Vector3;
-    constructor({ canvas, rotateSpeed, slideSpeed, scrollSpeed, swapRotateSlide, reverseRotate, reverseSlide, reverseSwipe, reverseScroll, moveInertia, rotateInertia, pointerRollScale, doublePress, pressMoveDelayMs, pressMoveAccelMs, pressMoveSpeed, doublePressMoveSpeed, triplePressMoveSpeed, }: {
+    constructor({ canvas, rotateSpeed, slideSpeed, scrollSpeed, swapRotateSlide, reverseRotate, reverseSlide, reverseSwipe, reverseScroll, moveInertia, rotateInertia, pointerRollScale, doublePress, pressMoveDelayMs, pressMoveAccelMs, pressMoveSpeed, doublePressMoveSpeed, triplePressMoveSpeed, pressMoveCenter, }: {
         canvas: HTMLCanvasElement;
         rotateSpeed?: number;
         slideSpeed?: number;
@@ -127,6 +129,7 @@ export declare class PointerControls {
         pressMoveSpeed?: number;
         doublePressMoveSpeed?: number;
         triplePressMoveSpeed?: number;
+        pressMoveCenter?: boolean;
     });
     getPointerPosition(event: PointerEvent): THREE.Vector2;
     update(deltaTime: number, control: THREE.Object3D, camera?: THREE.Camera): boolean;

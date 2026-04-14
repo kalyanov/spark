@@ -150,6 +150,11 @@ export interface SparkRendererOptions {
      */
     enableDriveLod?: boolean;
     /**
+     * Whether to enable page fetching for LoD.
+     * @default true
+     */
+    enableLodFetching?: boolean;
+    /**
      * Set the target # splats for LoD. If this isn't set then default base LoD splat
      * counts will apply: 500K-750K for WebXR, 1-1.5M for mobile, and 2.5M for desktop.
      * @default 500K-2500K depending on platform
@@ -279,6 +284,7 @@ export declare class SparkRenderer extends THREE.Mesh {
     readback32: Uint32Array<ArrayBuffer>;
     enableLod: boolean;
     enableDriveLod: boolean;
+    enableLodFetching: boolean;
     lodSplatCount?: number;
     lodSplatScale: number;
     lodRenderScale: number;
